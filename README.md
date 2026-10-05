@@ -9,7 +9,7 @@
 
 Copyright (c) 2026 Mr-Egyptian
 Licensed under GNU General Public License v3.0
-Original repository: <YOUR_REPO_URL>
+Original repository: https://github.com/Mr-EgyptianX/Terminal-AI
 
 ---
 
@@ -231,7 +231,7 @@ Method 1: Direct Copy
 Method 2: From GitHub (future)
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/Mr-EgyptianX/Terminal-AI
 cd TermuxAI
 chmod +x main.sh
 ./main.sh
