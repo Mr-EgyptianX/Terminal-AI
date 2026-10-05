@@ -599,3 +599,6 @@ v3.0 (2026)
 ---
 
 Made with love in Egypt
+
+Sunni 13
+Please support me.❤️
