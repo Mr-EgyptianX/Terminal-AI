@@ -13,6 +13,10 @@ Original repository: https://github.com/Mr-EgyptianX/Terminal-AI
 
 ---
 
+### 🏠 Main Menu
+![Main Menu](01_main_menu.png)
+
+
 ## 📖 Overview
 
 Termux AI is a comprehensive, single-file toolkit for Android's Termux terminal emulator. It bundles four powerful tools into one application:
@@ -29,6 +33,8 @@ The entire project is contained in a single `main.sh` file that self-bootstraps 
 ## ✨ Features
 
 ### 📁 Normal Mode (12 options)
+
+![Normal Mode](02_normal_mode.png)
 
 Complete file management with Arabic + English support:
 
@@ -59,6 +65,8 @@ Complete file management with Arabic + English support:
 ---
 
 ### 🧠 Advanced Mode (4 options)
+
+![AI Analyzer](03_ai_analyzer.png)
 
 | # | Feature |
 |---|---------|
@@ -115,6 +123,8 @@ Score:  0.95 [high] very similar name
 
 ### 🌐 Browser (Text-based)
 
+![Browser](04_browser.png)
+
 Full-featured text browser:
 
 | # | Action |
@@ -148,6 +158,8 @@ Full-featured text browser:
 ---
 
 ### 💬 P2P Chat (Encrypted)
+
+![P2P Chat](05_p2p_chat.png)
 
 Peer-to-peer messaging over MQTT with strong encryption:
 
