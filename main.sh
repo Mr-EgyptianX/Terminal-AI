@@ -5033,6 +5033,7 @@ class PageParser(HTMLParser):
         self.links = []
         self.buttons = []
         self.forms = []
+        self._current_form = None
         self._in_title = False
         self._in_script = False
         self._in_style = False
@@ -5072,6 +5073,31 @@ class PageParser(HTMLParser):
             self.forms.append({
                 "action": (ad.get("action") or "").strip(),
                 "method": (ad.get("method") or "get").upper(),
+                "fields": [],
+            })
+            self._current_form = len(self.forms) - 1
+        elif tag == "input":
+            if self._current_form is not None:
+                input_type = (ad.get("type") or "text").lower()
+                input_name = (ad.get("name") or "").strip()
+                input_value = (ad.get("value") or "").strip()
+                input_placeholder = (ad.get("placeholder") or "").strip()
+                if input_type not in ("submit", "button", "reset", "image"):
+                    self.forms[self._current_form]["fields"].append({
+                    "name": input_name,
+                    "type": input_type,
+                    "value": input_value,
+                    "placeholder": input_placeholder,
+                    })
+        elif tag == "textarea":
+           if self._current_form is not None:
+            ta_name = (ad.get("name") or "").strip()
+            ta_placeholder = (ad.get("placeholder") or "").strip()
+            self.forms[self._current_form]["fields"].append({
+               "name": ta_name,
+               "type": "textarea",
+               "value": "",
+               "placeholder": ta_placeholder,
             })
         elif tag in ("p", "br", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "tr"):
             self.text_parts.append("\n")
@@ -5129,6 +5155,9 @@ class PageParser(HTMLParser):
             if text:
                 self.buttons.append(text)
             self._current_button_text = None
+
+        elif tag == "form":
+            self._current_form = None
 
     def handle_data(self, data):
         if self._in_script or self._in_style:
@@ -5796,6 +5825,199 @@ def choose_search_engine(state):
             print("Out of range.")
             pause()
 
+def display_form_info(form, index, total):
+    """عرض معلومات نموذج واحد"""
+    action = form.get("action", "") or "(current URL)"
+    method = form.get("method", "GET").upper()
+    fields = form.get("fields", [])
+
+    print()
+    print("  Form " + str(index) + "/" + str(total))
+    print("    Method: " + method)
+    print("    Action: " + action[:60])
+    print("    Fields: " + str(len(fields)))
+
+def fill_form(form):
+    """تفاعلي: اختر الحقل الذي تريد ملئه"""
+    fields = form.get("fields", [])
+    values = {}
+
+    if not fields:
+        return values
+
+    while True:
+        clear()
+        print()
+        print("  " + "=" * 50)
+        print("  FORM FIELDS (" + str(len(fields)) + " fields total)")
+        print("  " + "=" * 50)
+        print()
+
+        for i, field in enumerate(fields, 1):
+            fname = field.get("name", "") or "(no name)"
+            ftype = field.get("type", "text")
+            default_val = field.get("value", "")
+            filled_val = values.get(field.get("name", ""), "")
+
+            marker = "X" if filled_val else " "
+            display = filled_val if filled_val else default_val
+            if display:
+                display = display[:40]
+            else:
+                display = "(empty)"
+
+            print("  [" + str(i) + "] " + marker + " " + fname + " (" + ftype + ")")
+            print("         " + display)
+
+        print()
+        print("  [A] Fill all fields one by one")
+        print("  [S] Submit form now")
+        print("  [0] Cancel")
+        print()
+
+        try:
+            choice = input("  Select: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return None
+
+        if choice == "0":
+            return None
+
+        if choice.upper() == "S":
+            return values
+
+        if choice.upper() == "A":
+            for i, field in enumerate(fields, 1):
+                name = field.get("name", "")
+                if not name:
+                    continue
+                if name in values and values[name]:
+                    continue
+                result = _ask_field(field, i, len(fields))
+                if result is None:
+                    return None
+                if result is not False:
+                    values[name] = result
+            continue
+
+        try:
+            idx = int(choice) - 1
+        except ValueError:
+            print("  Invalid choice.")
+            continue
+
+        if 0 <= idx < len(fields):
+            field = fields[idx]
+            name = field.get("name", "")
+            if not name:
+                print("  Field has no name, cannot fill.")
+                input("  Press ENTER...")
+                continue
+            result = _ask_field(field, idx + 1, len(fields))
+            if result is None:
+                return None
+            if result is not False:
+                values[name] = result
+        else:
+            print("  Out of range.")
+            input("  Press ENTER...")
+
+
+def _ask_field(field, index, total):
+    """اسأل عن حقل واحد"""
+    name = field.get("name", "")
+    ftype = field.get("type", "text")
+    default = field.get("value", "")
+    placeholder = field.get("placeholder", "")
+
+    print()
+    print("  --- Field " + str(index) + "/" + str(total) + " ---")
+    print("  Name: " + name)
+    print("  Type: " + ftype)
+
+    if placeholder:
+        print("  Hint: " + placeholder)
+    if default:
+        print("  Default: " + default)
+
+    print("  (ENTER = default, /skip = skip, /cancel = cancel)")
+
+    try:
+        user_input = input("  Value: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+
+    if user_input == "/cancel":
+        return None
+    if user_input == "/skip":
+        return False
+    if user_input:
+        return user_input
+    if default:
+        return default
+    return ""
+
+
+def submit_form(base_url, form, values):
+    """إرسال النموذج (GET أو POST) وإرجاع HTML"""
+    import urllib.parse as urlparse
+
+    action = form.get("action", "").strip()
+    method = form.get("method", "GET").upper()
+
+    if not action:
+        action = base_url
+
+    target = resolve_url(base_url, action)
+
+    encoded = urlparse.urlencode(values)
+
+    try:
+        if method == "GET":
+            separator = "&" if "?" in target else "?"
+            full_url = target + separator + encoded
+            ok, html, final_url, err = fetch_page(full_url)
+            return ok, html, final_url, err
+        else:
+            body = encoded.encode("utf-8")
+            req = urllib.request.Request(
+                target,
+                data=body,
+                method="POST",
+            )
+            req.add_header("User-Agent", USER_AGENT)
+            req.add_header("Content-Type", "application/x-www-form-urlencoded")
+            req.add_header("Accept", "text/html,*/*;q=0.8")
+
+            with _opener.open(req, timeout=TIMEOUT) as resp:
+                final_url = resp.geturl()
+                ctype = resp.headers.get("Content-Type", "")
+                raw = resp.read()
+
+                charset = "utf-8"
+                m = re.search(r"charset=([\w-]+)", ctype, re.I)
+                if m:
+                    charset = m.group(1)
+
+                try:
+                    text = raw.decode(charset, errors="replace")
+                except (LookupError, UnicodeDecodeError):
+                    text = raw.decode("utf-8", errors="replace")
+
+                return True, text, final_url, ""
+
+    except urllib.error.HTTPError as e:
+        return False, "", target, "HTTP " + str(e.code)
+    except urllib.error.URLError as e:
+        return False, "", target, "Network: " + str(e.reason)
+    except socket.timeout:
+        return False, "", target, "Timeout"
+    except Exception as e:
+        return False, "", target, "Error: " + str(e)
+
+    return False, "", target, "Unknown error"
+
+
 
 # ============================================================
 # BROWSER LOOP
@@ -5819,6 +6041,9 @@ def browser_loop(state):
         if state.prev_url:print("[8] Previous page ←")
         print("[9] Download by number")
         print("[D] Download URL")
+        if state.forms:
+            total_fields = sum(len(f.get("fields", [])) for f in state.forms)
+            print("[H] ✏️  Fill form (" + str(len(state.forms)) + " form, " + str(total_fields) + " fields)")
         print("[0] Exit")
 
         try:
@@ -5936,9 +6161,105 @@ def browser_loop(state):
                 download_file(url)
                 pause()
 
-        else:
-            print("Invalid choice.")
+        elif choice.upper() == "H":
+            if not state.forms:
+                print("No forms on this page.")
+                pause()
+                continue
+
+            if len(state.forms) == 1:
+                form = state.forms[0]
+            else:
+                clear()
+                print()
+                print("  Multiple forms on this page:")
+                print()
+                for i, f in enumerate(state.forms, 1):
+                    action = f.get("action", "") or "(current URL)"
+                    method = f.get("method", "GET").upper()
+                    nf = len(f.get("fields", []))
+                    print("  [" + str(i) + "] " + method + " " + action[:40] + " (" + str(nf) + " fields)")
+                print()
+                print("  [0] Cancel")
+                print()
+                try:
+                    sel = input("  Select form: ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    continue
+                if sel == "0":
+                    continue
+                try:
+                    form = state.forms[int(sel) - 1]
+                except (ValueError, IndexError):
+                    print("  Invalid.")
+                    pause()
+                    continue
+
+            values = fill_form(form)
+
+            if values is None:
+                print("  Cancelled.")
+                pause()
+                continue
+
+            if not values:
+                print("  No values filled.")
+                pause()
+                continue
+
+            print()
+            print("  Submitting...")
+            ok, html, final_url, err = submit_form(state.url, form, values)
+
+            if not ok:
+                print("  [ERROR] " + err)
+                pause()
+                continue
+
+            parser = PageParser()
+            try:
+                parser.feed(html)
+            except Exception as e:
+                print("  [ERROR] Parse failed: " + str(e))
+                pause()
+                continue
+
+            state.url = final_url
+            state.title = parser.title.strip() or final_url
+            state.text = parser.get_text()
+            state.buttons = parser.buttons
+            state.forms = parser.forms
+
+            state.links = []
+            seen = set()
+            for lk in parser.links:
+                full = resolve_url(final_url, lk["url"])
+                if full in seen:
+                    continue
+                seen.add(full)
+                state.links.append({"url": full, "text": lk.get("text", "")})
+                if len(state.links) >= MAX_LINKS:
+                    break
+
+            if parser.next_url:
+                state.next_url = resolve_url(final_url, parser.next_url)
+            else:
+                state.next_url = None
+
+            if parser.prev_url:
+                state.prev_url = resolve_url(final_url, parser.prev_url)
+            else:
+                state.prev_url = None
+
+            state.save_to_history()
+            print("  Form submitted.")
             pause()
+
+
+
+        else:
+                print("Invalid choice.")
+                pause()
 
 # ============================================================
 # BROWSER MENU
@@ -6025,7 +6346,7 @@ WEB_ENGINE_PY_EOF
 
 Copyright (c) 2026 Mr-Egyptian
 Licensed under GNU General Public License v3.0
-Original repository: <YOUR_REPO_URL>
+Original repository: https://github.com/Mr-EgyptianX/Terminal-AI
 
 ---
 
@@ -6247,7 +6568,7 @@ Method 1: Direct Copy
 Method 2: From GitHub (future)
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/Mr-EgyptianX/Terminal-AI
 cd TermuxAI
 chmod +x main.sh
 ./main.sh
@@ -6564,7 +6885,7 @@ Mr-Egyptian
 · From Egypt
 · Developer of Termux AI
 · Contact: <mostafamom9292@gmail.com>
-· GitHub: <YOUR_REPO_URL>
+· GitHub: <https://github.com/Mr-EgyptianX/Terminal-AI>
 
 ---
 
