@@ -1,7 +1,9 @@
+# 🤖 Termux AI v3.0
+
 ![Version](https://img.shields.io/badge/version-3.0-blue)
 ![License](https://img.shields.io/badge/license-GPLv3-green)
 ![Platform](https://img.shields.io/badge/platform-Termux-orange)
-# 🤖 Termux AI v3.0
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 
 > **A complete AI-powered toolkit for Termux**
 
