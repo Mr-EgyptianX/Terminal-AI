@@ -139,6 +139,7 @@ Full-featured text browser:
 | 8 | Previous page |
 | 9 | Download by number |
 | D | Download URL |
+| H | ✏️  Fill form (1 form, 3 fields)
 | 0 | Exit |
 
 **Search Engines:**
