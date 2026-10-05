@@ -587,3 +587,20 @@ v3.0 (2026)
 ---
 
 Made with love in Egypt
+
+## 📸 Screenshots
+
+### 🏠 Main Menu
+![Main Menu](01_main_menu.png)
+
+### 📁 Normal Mode
+![Normal Mode](02_normal_mode.png)
+
+### 🧠 AI Command Analyzer
+![AI Analyzer](03_ai_analyzer.png)
+
+### 🌐 Text Browser
+![Browser](04_browser.png)
+
+### 💬 P2P Chat
+![P2P Chat](05_p2p_chat.png)
